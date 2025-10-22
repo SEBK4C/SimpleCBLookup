@@ -87,7 +87,7 @@ def main():
             print("\nDownloading all collections...")
             print("Note: This may take 30+ minutes depending on your connection speed.")
             run_command(
-                ["python", "-m", "cb_downloader", "download", "--all"],
+                ["python", "-m", "cb_downloader", "download", "--all", "--max-concurrency", "8"],
                 "Downloading all collections"
             )
         else:
