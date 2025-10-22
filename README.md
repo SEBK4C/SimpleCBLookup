@@ -2,6 +2,8 @@
 
 A simple tool for downloading Crunchbase static exports and loading them into DuckDB for local querying.
 
+**Quick Start:** Just run `./setup.sh` - it handles everything automatically!
+
 ## Features
 
 - Download Crunchbase static export collections using your API key
@@ -16,16 +18,61 @@ A simple tool for downloading Crunchbase static exports and loading them into Du
 
 - Python 3.8+
 - A Crunchbase API key
+- UV (recommended, installed automatically by setup.sh) or pip
 
 ### Install Dependencies
 
+**Using UV (recommended, faster):**
+```bash
+uv pip install httpx typer rich duckdb
+```
+
+**Using pip:**
 ```bash
 pip install httpx typer rich duckdb
 ```
 
 ## Getting Started
 
-### 1. Set Your API Key
+### One-Click Setup (Easiest)
+
+Run the automated setup script with UV ([uv](https://github.com/astral-sh/uv) is a fast Python package installer that's 10-100x faster than pip):
+
+```bash
+./setup.sh
+```
+
+Or copy-paste this true one-liner:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh && ./setup.sh
+```
+
+> **Note:** UV will be automatically installed if you don't have it. It's a modern Python tool that's much faster than pip and manages dependencies better.
+
+This will:
+1. Install UV (if not already installed)
+2. Install all Python dependencies
+3. Prompt for your Crunchbase API key
+4. Check available collections
+5. Download data (you can choose all or essential collections)
+6. Import into DuckDB
+7. Test with Tesla.com
+
+### Python Setup (Manual Install)
+
+If you prefer to manage dependencies yourself:
+
+```bash
+pip install httpx typer rich duckdb
+python setup.py
+```
+
+### Manual Setup
+
+If you prefer to do it step by step:
+
+#### 1. Set Your API Key
 
 Set your Crunchbase API key as an environment variable:
 
@@ -35,7 +82,7 @@ export CRUNCHBASE_USER_KEY="your-api-key-here"
 
 Alternatively, you can pass it via command-line arguments.
 
-### 2. Check Available Collections
+#### 2. Check Available Collections
 
 List all available collections and their metadata:
 
@@ -49,7 +96,7 @@ This will show you:
 - Last modified dates
 - File sizes
 
-### 3. Download Collections
+#### 3. Download Collections
 
 Download all available collections:
 
@@ -71,7 +118,7 @@ Available collections include:
 - `events` - Event information
 - And many more...
 
-### Download Options
+#### Download Options
 
 ```bash
 # Download to a custom directory
@@ -87,7 +134,7 @@ python -m cb_downloader download --all --max-concurrency 8
 python -m cb_downloader download --all --user-key "your-key"
 ```
 
-### 4. Import into DuckDB
+#### 4. Import into DuckDB
 
 After downloading, import the ZIP files into DuckDB:
 
@@ -107,7 +154,7 @@ This will:
 - Import all data with automatic schema inference
 - Show a summary of imported tables and row counts
 
-### 5. Query the Data
+#### 5. Query the Data
 
 Query funding data for a company by URL:
 

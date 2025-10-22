@@ -1,0 +1,9 @@
+# CSV files
+*.csv
+
+# ZIP files
+*.zip
+
+# Data directory
+data/
+
