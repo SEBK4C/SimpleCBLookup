@@ -7,6 +7,13 @@ echo "==========================================================================
 echo "  SimpleCBLookup Setup"
 echo "================================================================================"
 echo ""
+echo "This script will:"
+echo "  - Install UV (fast Python package manager) if needed"
+echo "  - Install dependencies"
+echo "  - Run setup.py (which will prompt for API key and data options)"
+echo ""
+echo "Note: If you have existing data, you'll be prompted to use it or download fresh."
+echo ""
 
 # Check if uv is installed
 if ! command -v uv &> /dev/null; then

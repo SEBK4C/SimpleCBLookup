@@ -4,6 +4,8 @@ A simple tool for downloading Crunchbase static exports and loading them into Du
 
 **Quick Start:** Just run `./setup.sh` - it handles everything automatically!
 
+> **Note:** If you already have data downloaded, the setup script will detect it and ask if you want to use existing data or download fresh updates.
+
 ## Features
 
 - Download Crunchbase static export collections using your API key
@@ -53,11 +55,24 @@ curl -LsSf https://astral.sh/uv/install.sh | sh && ./setup.sh
 This will:
 1. Install UV (if not already installed)
 2. Install all Python dependencies
-3. Prompt for your Crunchbase API key
-4. Check available collections
-5. Download data (you can choose all or essential collections)
-6. Import into DuckDB
-7. Test with Tesla.com
+3. Check for existing data (if found, you can use it or download fresh)
+4. Prompt for your Crunchbase API key
+5. Check available collections (or skip if using existing data)
+6. Download data (you can choose all or essential collections)
+7. Import into DuckDB (or skip if database already exists)
+8. Test with Tesla.com
+
+### Re-running Setup
+
+If you run `./setup.sh` again and already have data:
+
+- **Download step**: You'll be asked if you want to use existing zips or download fresh data
+- **Import step**: You'll be asked if you want to re-import or use the existing database
+
+This allows you to easily:
+- Update your data with fresh downloads
+- Recreate your database if needed
+- Skip unnecessary steps when you just want to test queries
 
 ### Python Setup (Manual Install)
 
@@ -142,15 +157,11 @@ After downloading, import the ZIP files into DuckDB:
 python localduck/import_to_duckdb.py
 ```
 
-Or specify a custom directory:
-
-```bash
-python localduck/import_to_duckdb.py /path/to/downloaded/zips
-```
-
 This will:
-- Extract CSV files from all ZIP archives
-- Create tables in `localduck.duckdb`
+- Read the manifest.json to determine the data date
+- Extract CSV files from all ZIP archives in `data/zips/`
+- Save extracted CSVs to `data/extracted_csvs/` with timestamped filenames
+- Create tables in `data/cb_data.YYYY-MM-DD.duckdb` (e.g., `data/cb_data.2025-10-21.duckdb`)
 - Import all data with automatic schema inference
 - Show a summary of imported tables and row counts
 
@@ -202,33 +213,45 @@ Connect to the DuckDB database:
 
 ```python
 import duckdb
+import glob
 
-conn = duckdb.connect("localduck.duckdb")
+# Find the latest database
+db_files = glob.glob("data/cb_data.*.duckdb")
+db_path = sorted(db_files)[-1] if db_files else None
 
-# List all tables
-print(conn.execute("SHOW TABLES").fetchall())
-
-# Query organizations
-results = conn.execute("SELECT * FROM organizations LIMIT 10").fetchall()
-print(results)
-
-conn.close()
+if db_path:
+    conn = duckdb.connect(db_path)
+    
+    # List all tables
+    print(conn.execute("SHOW TABLES").fetchall())
+    
+    # Query organizations
+    results = conn.execute("SELECT * FROM organizations LIMIT 10").fetchall()
+    print(results)
+    
+    conn.close()
+else:
+    print("No database found. Run the import script first.")
 ```
 
 ## Project Structure
 
 ```
 SimpleCBLookup/
-├── cb_downloader/          # Download tool
-│   ├── cli.py              # Command-line interface
-│   ├── collections.py      # Collection definitions
+├── cb_downloader/             # Download tool
+│   ├── cli.py                 # Command-line interface
+│   ├── collections.py         # Collection definitions
 │   └── __init__.py
-├── localduck/              # DuckDB import and query tools
-│   ├── import_to_duckdb.py # Import script
-│   └── query_funding_by_url.py  # Query example
-├── data/                   # Downloaded data (created on first run)
-│   ├── zips/              # Downloaded ZIP files
-│   └── manifest.json      # Download tracking
+├── localduck/                 # DuckDB import and query tools
+│   ├── import_to_duckdb.py    # Import script
+│   └── query_funding_by_url.py # Query example
+├── data/                      # Downloaded data (created on first run, gitignored)
+│   ├── zips/                  # Downloaded ZIP files
+│   ├── extracted_csvs/        # Extracted CSV files with timestamps
+│   ├── cb_data.YYYY-MM-DD.duckdb  # DuckDB database with date
+│   └── manifest.json           # Download tracking
+├── setup.py                   # Setup script
+├── setup.sh                   # Automated setup script
 └── README.md
 ```
 

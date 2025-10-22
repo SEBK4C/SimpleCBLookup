@@ -5,8 +5,23 @@ Query funding data and VC rounds for a company by URL.
 
 import duckdb
 import re
+import os
+import glob
 from typing import Optional, List, Dict
 from datetime import datetime
+
+
+def find_database() -> Optional[str]:
+    """Find the latest DuckDB database in the data folder."""
+    # Look for databases matching the pattern cb_data.YYYY-MM-DD.duckdb
+    db_pattern = os.path.join("data", "cb_data.*.duckdb")
+    db_files = glob.glob(db_pattern)
+    
+    if not db_files:
+        return None
+    
+    # Return the most recent one (assuming sorted by date)
+    return sorted(db_files)[-1]
 
 
 def normalize_url(url: str) -> str:
@@ -223,7 +238,15 @@ def query_funding_by_url(db_path: str, url: str):
 def main():
     import sys
     
-    db_path = "localduck.duckdb"
+    # Find the database file
+    db_path = find_database()
+    
+    if not db_path:
+        print("❌ No DuckDB database found in data folder.")
+        print("   Please run the import script first to create the database.")
+        sys.exit(1)
+    
+    print(f"Using database: {db_path}")
     
     if len(sys.argv) < 2 or sys.argv[1] in ['--help', '-h', 'help']:
         print("Usage: localduck-query <url>")

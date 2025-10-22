@@ -3,7 +3,8 @@
 
 # ZIP files
 *.zip
+*.duckdb
 
 # Data directory
 data/
-
+extracted_csvs/
