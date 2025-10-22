@@ -1,0 +1,18 @@
+[project]
+name = "simplecblookup"
+version = "0.1.0"
+description = "A simple tool for downloading Crunchbase static exports and loading them into DuckDB for local querying"
+requires-python = ">=3.8"
+dependencies = [
+    "httpx>=0.24.0",
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "duckdb>=0.9.0",
+    "python-dateutil>=2.8.0",
+]
+
+[project.scripts]
+cb-downloader = "cb_downloader.cli:app"
+localduck-query = "localduck.query_funding_by_url:main"
+localduck-bulk = "bulk_funding_query:main"
+

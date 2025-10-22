@@ -10,7 +10,8 @@ A simple tool for downloading Crunchbase static exports and loading them into Du
 
 - Download Crunchbase static export collections using your API key
 - Import downloaded data into DuckDB for fast local querying
-- Query funding data by company URL
+- Query funding data by company URL (single or bulk)
+- Bulk query multiple companies with quarterly funding breakdown
 - Check which collections are available with your API key
 - Track updates with Last-Modified timestamps
 
@@ -26,12 +27,12 @@ A simple tool for downloading Crunchbase static exports and loading them into Du
 
 **Using UV (recommended, faster):**
 ```bash
-uv pip install httpx typer rich duckdb
+uv pip install httpx typer rich duckdb python-dateutil
 ```
 
 **Using pip:**
 ```bash
-pip install httpx typer rich duckdb
+pip install httpx typer rich duckdb python-dateutil
 ```
 
 ## Getting Started
@@ -185,6 +186,40 @@ This will display:
 - Amount raised, valuations, stages
 - Summary statistics
 
+#### Bulk Query Multiple Companies
+
+Query funding data for multiple companies from a CSV file:
+
+```bash
+# Auto-generate output filename from input CSV name
+python bulk_funding_query.py urls.csv
+
+# Or specify custom output filename
+python bulk_funding_query.py urls.csv output.csv
+```
+
+Or query a single company and save to CSV (output filename auto-generated):
+
+```bash
+python bulk_funding_query.py tesla.com
+```
+
+**Output filename format:**
+- Single URL: `{url}_Funding_rounds_to_date_{YYYY-MM-DD}.csv`
+- CSV input: `{input_filename}_Funding_rounds_to_date_{YYYY-MM-DD}.csv`
+
+Example outputs:
+- `tesla.com` → `tesla.com_Funding_rounds_to_date_2025-01-23.csv`
+- `companies.csv` → `companies_Funding_rounds_to_date_2025-01-23.csv`
+
+The bulk query script outputs a CSV with:
+- Company information (name, description, categories, etc.)
+- Investment rounds and funding details
+- Total funding to date
+- Quarterly funding breakdown (2025 Q1, 2025 Q2, etc.)
+
+CSV format: Put URLs in the first column of your input CSV.
+
 ## Data Structure
 
 Downloaded files are stored in `data/zips/` by default. Each ZIP contains CSV files that are imported into DuckDB tables.
@@ -245,6 +280,7 @@ SimpleCBLookup/
 ├── localduck/                 # DuckDB import and query tools
 │   ├── import_to_duckdb.py    # Import script
 │   └── query_funding_by_url.py # Query example
+├── bulk_funding_query.py      # Bulk query script
 ├── data/                      # Downloaded data (created on first run, gitignored)
 │   ├── zips/                  # Downloaded ZIP files
 │   ├── extracted_csvs/        # Extracted CSV files with timestamps
@@ -252,6 +288,7 @@ SimpleCBLookup/
 │   └── manifest.json           # Download tracking
 ├── setup.py                   # Setup script
 ├── setup.sh                   # Automated setup script
+├── pyproject.toml             # UV dependencies
 └── README.md
 ```
 
@@ -261,6 +298,7 @@ SimpleCBLookup/
 - `typer` - CLI framework
 - `rich` - Terminal formatting
 - `duckdb` - Local database
+- `python-dateutil` - Date utilities for bulk queries
 
 ## License
 

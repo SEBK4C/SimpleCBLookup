@@ -47,7 +47,7 @@ source .venv/bin/activate
 
 # Install dependencies using UV
 echo "Installing dependencies..."
-uv pip install httpx typer rich duckdb
+uv pip install httpx typer rich duckdb python-dateutil
 
 echo ""
 echo "✓ Dependencies installed"
