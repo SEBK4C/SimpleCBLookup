@@ -8,3 +8,30 @@
 # Data directory
 data/
 extracted_csvs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# UV
+# Note: uv.lock should be COMMITTED to ensure reproducible builds
+# uv.lock
