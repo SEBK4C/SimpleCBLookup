@@ -12,9 +12,9 @@ from datetime import datetime
 
 
 def find_database() -> Optional[str]:
-    """Find the latest DuckDB database in the data folder."""
+    """Find the latest DuckDB database in the DATA folder."""
     # Look for databases matching the pattern cb_data.YYYY-MM-DD.duckdb
-    db_pattern = os.path.join("data", "cb_data.*.duckdb")
+    db_pattern = os.path.join("../DATA", "cb_data.*.duckdb")
     db_files = glob.glob(db_pattern)
     
     if not db_files:
@@ -242,7 +242,7 @@ def main():
     db_path = find_database()
     
     if not db_path:
-        print("❌ No DuckDB database found in data folder.")
+        print("❌ No DuckDB database found in DATA folder.")
         print("   Please run the import script first to create the database.")
         sys.exit(1)
     

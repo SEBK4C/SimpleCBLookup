@@ -31,9 +31,9 @@ def sanitize_filename(filename: str) -> str:
 
 
 def find_database() -> Optional[str]:
-    """Find the latest DuckDB database in the data folder."""
+    """Find the latest DuckDB database in the DATA folder."""
     # Look for databases matching the pattern cb_data.YYYY-MM-DD.duckdb
-    db_pattern = os.path.join("data", "cb_data.*.duckdb")
+    db_pattern = os.path.join("../DATA", "cb_data.*.duckdb")
     db_files = glob.glob(db_pattern)
     
     if not db_files:
@@ -54,6 +54,41 @@ def normalize_url(url: str) -> str:
     # Remove path
     url = url.split('/')[0]
     return url.lower()
+
+def find_url_column(header_row: List[str]) -> int:
+    """Find the URL column index by looking for common patterns."""
+    # Primary keywords for URL columns
+    url_keywords = ['url', 'website', 'domain', 'website_url', 'site', 'web']
+    
+    # Secondary keywords that might contain URLs
+    secondary_keywords = ['company_url', 'firm', 'organization']
+    
+    found_indices = []
+    for idx, col_name in enumerate(header_row):
+        col_lower = col_name.lower().strip()
+        
+        # Skip empty headers
+        if not col_lower:
+            continue
+            
+        # Check primary keywords
+        if any(keyword in col_lower for keyword in url_keywords):
+            found_indices.append(idx)
+        # Check secondary keywords (but with lower priority)
+        elif any(keyword in col_lower for keyword in secondary_keywords):
+            found_indices.append(idx)
+    
+    if len(found_indices) == 0:
+        return None  # No URL column found
+    elif len(found_indices) > 1:
+        # Try to be smart - prefer columns with "url" or "website" in name
+        priority_indices = [idx for idx in found_indices 
+                           if any(kw in header_row[idx].lower() for kw in ['url', 'website'])]
+        if len(priority_indices) == 1:
+            return priority_indices[0]
+        return -1  # Multiple URL columns found (error)
+    else:
+        return found_indices[0]  # Found exactly one URL column
 
 
 def find_organization_by_url(db_path: str, url: str) -> Optional[Dict]:
@@ -361,65 +396,168 @@ def process_company(db_path: str, url: str) -> Optional[Dict]:
     }
 
 
-def bulk_process_urls(db_path: str, urls: List[str], output_file: str):
-    """Process multiple URLs and output to CSV."""
+def bulk_process_csv(db_path: str, input_file: str, output_file: str):
+    """Process CSV file row by row, finding URLs and adding funding data."""
     today = date.today()
     
-    # Process all companies
-    results = []
-    for i, url in enumerate(urls, 1):
-        print(f"[{i}/{len(urls)}] Processing: {url}")
-        result = process_company(db_path, url)
-        if result:
-            results.append(result)
-            print(f"  ✓ Found: {result['company_info'].split('Name: ')[1].split(' |')[0] if 'Name: ' in result['company_info'] else 'Unknown'}")
-        else:
-            print(f"  ✗ Not found")
+    # Read the original CSV
+    original_rows = []
+    with open(input_file, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        original_rows = list(reader)
     
-    if not results:
-        print("\nNo companies found!")
+    if not original_rows:
+        print("❌ CSV file is empty")
         return
     
-    # Determine all unique quarters across all companies
+    # Find URL column
+    header_row = original_rows[0]
+    
+    # Clean header row - remove empty entries and normalize
+    cleaned_header = [col.strip() if col else f'Column_{i+1}' for i, col in enumerate(header_row)]
+    
+    url_col_idx = find_url_column(cleaned_header)
+    
+    if url_col_idx is None:
+        print("❌ Error: No URL column found!")
+        print("   Please add a column with one of these names:")
+        print("   URL, Website, Domain, Website_URL, Site, Web, Company_URL")
+        print(f"   Current headers: {cleaned_header}")
+        return
+    
+    if url_col_idx == -1:
+        print("❌ Error: Multiple URL columns found!")
+        print("   Please ensure there is only ONE column containing URLs.")
+        print(f"   Header row: {cleaned_header}")
+        return
+    
+    print(f"✓ Found URL column: '{cleaned_header[url_col_idx]}' (column {url_col_idx + 1})")
+    
+    # Process each data row
+    enhanced_rows = []
     all_quarters = set()
-    for result in results:
-        all_quarters.update(result['quarters'])
+    
+    for row_idx, row in enumerate(original_rows[1:], start=1):
+        # Get URL from the identified column
+        if len(row) <= url_col_idx:
+            print(f"  Row {row_idx}: Skipping (no URL in column)")
+            enhanced_rows.append({
+                'row': row,
+                'result': None
+            })
+            continue
+        
+        url = row[url_col_idx].strip()
+        if not url:
+            print(f"  Row {row_idx}: Skipping (empty URL)")
+            enhanced_rows.append({
+                'row': row,
+                'result': None
+            })
+            continue
+        
+        print(f"  Row {row_idx}: Processing {url}")
+        result = process_company(db_path, url)
+        
+        if result:
+            company_name = result['company_info'].split('Name: ')[1].split(' |')[0] if 'Name: ' in result['company_info'] else 'Unknown'
+            print(f"    ✓ Found: {company_name}")
+            
+            # Collect quarters for later column generation
+            all_quarters.update(result['quarters'])
+            
+            # Store enhanced row data
+            enhanced_rows.append({
+                'row': row,
+                'result': result
+            })
+        else:
+            print(f"    ✗ Not found")
+            enhanced_rows.append({
+                'row': row,
+                'result': None
+            })
     
     # Sort quarters chronologically - newest first
     all_quarters = sort_quarters_chronologically(list(all_quarters), reverse=True)
     
-    # Write to CSV
+    # Ask user for oldest year to include
+    print(f"\n{'='*60}")
+    print("Quarterly Data Export Settings")
+    print(f"{'='*60}")
+    print(f"Found quarters from {all_quarters[-1]} to {all_quarters[0]}")
+    print("\nEnter the oldest year to include in quarterly columns:")
+    print("  - Press Enter for ALL quarters (default)")
+    print("  - Or enter a year (e.g., 2010, 1990)")
+    
+    user_input = input("\nOldest year (default=all): ").strip()
+    
+    if user_input:
+        try:
+            oldest_year = int(user_input)
+            # Filter quarters to only include those >= oldest_year
+            filtered_quarters = [q for q in all_quarters if parse_quarter(q)[0] >= oldest_year]
+            if filtered_quarters:
+                all_quarters = filtered_quarters
+                print(f"✓ Filtered to quarters from {all_quarters[-1]} onwards")
+            else:
+                print(f"⚠️  No quarters found for year {oldest_year} or later")
+                print("   Using all quarters instead")
+        except ValueError:
+            print(f"⚠️  Invalid year input: '{user_input}'")
+            print("   Using all quarters instead")
+    else:
+        print("✓ Using all quarters")
+    
+    # Write enhanced CSV
     print(f"\nWriting results to {output_file}...")
     with open(output_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         
-        # Header row
-        header = ['URL', 'Company Information', 'Investment Rounds and Funding Information', 
-                  'Total Funding to Date']
-        header.extend(all_quarters)
-        writer.writerow(header)
+        # Create enhanced header using cleaned headers
+        enhanced_header = cleaned_header.copy()
+        enhanced_header.extend(['Company Information', 'Investment Rounds and Funding Information', 
+                               'Total Funding to Date'])
+        enhanced_header.extend(all_quarters)
+        writer.writerow(enhanced_header)
         
-        # Data rows
-        for result in results:
-            row = [
-                result['url'],
-                result['company_info'],
-                result['funding_info'],
-                result['total_funding'] if result['total_funding'] else ''
-            ]
+        # Write enhanced data rows
+        for enhanced_row_data in enhanced_rows:
+            row = enhanced_row_data['row'].copy()
+            result = enhanced_row_data['result']
             
-            # Add quarterly funding data
-            for quarter in all_quarters:
-                if quarter in result['quarterly_funding']:
-                    row.append(result['quarterly_funding'][quarter])
-                else:
-                    row.append('')
+            # Ensure row has same number of columns as header
+            while len(row) < len(cleaned_header):
+                row.append('')
+            
+            if result:
+                # Add funding data columns
+                row.extend([
+                    result['company_info'],
+                    result['funding_info'],
+                    result['total_funding'] if result['total_funding'] else ''
+                ])
+                
+                # Add quarterly funding data
+                for quarter in all_quarters:
+                    if quarter in result['quarterly_funding']:
+                        row.append(result['quarterly_funding'][quarter])
+                    else:
+                        row.append('')
+            else:
+                # No result - add empty columns
+                row.extend(['', '', ''])  # Company info, Funding info, Total funding
+                row.extend([''] * len(all_quarters))  # Empty quarterly columns
             
             writer.writerow(row)
     
-    print(f"✓ Done! Output written to {output_file}")
-    print(f"  Processed {len(results)} companies")
-    print(f"  Date range: {all_quarters[-1]} to {all_quarters[0]}")
+    # Summary
+    found_count = sum(1 for er in enhanced_rows if er['result'] is not None)
+    print(f"\n✓ Done! Output written to {output_file}")
+    print(f"  Total rows processed: {len(enhanced_rows)}")
+    print(f"  Companies found: {found_count}")
+    if all_quarters:
+        print(f"  Date range: {all_quarters[-1]} to {all_quarters[0]}")
 
 
 def main():
@@ -427,7 +565,7 @@ def main():
     db_path = find_database()
     
     if not db_path:
-        print("❌ No DuckDB database found in data folder.")
+        print("❌ No DuckDB database found in DATA folder.")
         print("   Please run the import script first to create the database.")
         sys.exit(1)
     
@@ -435,89 +573,51 @@ def main():
     
     if len(sys.argv) < 2 or sys.argv[1] in ['--help', '-h', 'help']:
         print("Usage:")
-        print("  localduck-bulk <url>                      # Process single URL")
-        print("  localduck-bulk <input.csv>                 # Process CSV of URLs (auto-generate output)")
-        print("  localduck-bulk <input.csv> <output.csv>   # Process CSV with custom output filename")
-        print("\nCSV format: URLs in first column")
+        print("  bulk <input.csv>                           # Process CSV with single row of URLs")
+        print("  bulk <input.csv> <output.csv>            # Process CSV with custom output filename")
+        print("\nCSV format: URLs in single row (either header or data row)")
+        print("Only ONE row with URLs allowed!")
         print("\nExample:")
-        print("  localduck-bulk tesla.com")
-        print("  localduck-bulk urls.csv")
-        print("  localduck-bulk urls.csv custom_output.csv")
+        print("  bulk INPUT/companies.csv")
+        print("  bulk INPUT/companies.csv OUTPUT/enhanced.csv")
         sys.exit(0)
     
-    # Single argument mode - could be URL or CSV
-    if len(sys.argv) == 2:
-        input_arg = sys.argv[1]
-        
-        # Check if it's a CSV file
-        if input_arg.endswith('.csv'):
-            # CSV input mode with auto-generated output filename
-            input_csv = input_arg
-            
-            # Read URLs from CSV
-            urls = []
-            with open(input_csv, 'r', encoding='utf-8') as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if row and row[0].strip():
-                        urls.append(row[0].strip())
-            
-            if not urls:
-                print("❌ No URLs found in input CSV")
-                sys.exit(1)
-            
-            # Create output filename: input (without .csv) + Funding_rounds_to_date + today's date
-            today = date.today()
-            input_basename = os.path.splitext(os.path.basename(input_csv))[0]
-            output_csv = f"{input_basename}_Funding_rounds_to_date_{today.strftime('%Y-%m-%d')}.csv"
-            
-            print(f"Found {len(urls)} URLs in {input_csv}")
-            bulk_process_urls(db_path, urls, output_csv)
-        
-        else:
-            # Single URL mode
-            url = input_arg
-            print(f"Processing single URL: {url}")
-            
-            result = process_company(db_path, url)
-            if not result:
-                print(f"❌ No organization found matching URL: {url}")
-                sys.exit(1)
-            
-            # Create output filename: input + Funding_rounds_to_date + today's date
-            today = date.today()
-            sanitized_input = sanitize_filename(url)
-            output_file = f"{sanitized_input}_Funding_rounds_to_date_{today.strftime('%Y-%m-%d')}.csv"
-            
-            # Process as if it's a CSV with one URL
-            bulk_process_urls(db_path, [url], output_file)
+    # Ensure INPUT and OUTPUT directories exist
+    os.makedirs("../INPUT", exist_ok=True)
+    os.makedirs("../OUTPUT", exist_ok=True)
     
-    # CSV input mode with explicit output filename
-    elif len(sys.argv) == 3:
+    # CSV input mode
+    if len(sys.argv) >= 2:
         input_csv = sys.argv[1]
-        output_csv = sys.argv[2]
         
-        # Read URLs from CSV
-        urls = []
-        with open(input_csv, 'r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                if row and row[0].strip():
-                    urls.append(row[0].strip())
+        # Check if file exists in INPUT directory or current directory
+        if not os.path.exists(input_csv) and os.path.exists(f"../INPUT/{input_csv}"):
+            input_csv = f"../INPUT/{input_csv}"
         
-        if not urls:
-            print("❌ No URLs found in input CSV")
+        if not os.path.exists(input_csv):
+            print(f"❌ Input file not found: {input_csv}")
             sys.exit(1)
         
-        print(f"Found {len(urls)} URLs in {input_csv}")
-        bulk_process_urls(db_path, urls, output_csv)
+        # Determine output file
+        if len(sys.argv) == 3:
+            output_csv = sys.argv[2]
+            # If no path specified, put in OUTPUT directory
+            if os.path.dirname(output_csv) == '':
+                output_csv = f"../OUTPUT/{output_csv}"
+        else:
+            # Auto-generate output filename
+            today = date.today()
+            input_basename = os.path.splitext(os.path.basename(input_csv))[0]
+            output_csv = f"../OUTPUT/{input_basename}_Funding_enhanced_{today.strftime('%Y-%m-%d')}.csv"
+        
+        # Process the CSV file
+        bulk_process_csv(db_path, input_csv, output_csv)
     
     else:
         print("❌ Invalid arguments")
         print("Usage:")
-        print("  localduck-bulk <url>                      # Process single URL")
-        print("  localduck-bulk <input.csv>                 # Process CSV of URLs (auto-generate output)")
-        print("  localduck-bulk <input.csv> <output.csv>   # Process CSV with custom output filename")
+        print("  bulk <input.csv>                           # Process CSV with single row of URLs")
+        print("  bulk <input.csv> <output.csv>            # Process CSV with custom output filename")
         sys.exit(1)
 
 

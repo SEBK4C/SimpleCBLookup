@@ -1,25 +1,22 @@
-# CSV files
-*.csv
-
-# ZIP files
-*.zip
-*.duckdb
-
-# Data directory
-data/
-extracted_csvs/
-
-# Python cache
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 .Python
-
-# Virtual environment
 .venv/
 venv/
+ENV/
 env/
+
+# DuckDB
+*.duckdb
+*.duckdb.wal
+
+# Data
+data/
+*.zip
+*.csv
 
 # IDE
 .vscode/
@@ -30,8 +27,20 @@ env/
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# UV
-# Note: uv.lock should be COMMITTED to ensure reproducible builds
-# uv.lock
+# Project specific
+Updates.md
+OUTPUT/*.csv
+DIR/*
+.env
+
+# Keep directory structure
+!DIR/.gitkeep
+!OUTPUT/.gitkeep
+!INPUT/.gitkeep

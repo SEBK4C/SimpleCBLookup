@@ -1,0 +1,130 @@
+SimpleCBLookup - Project Specification
+========================================
+
+OBJECTIVE
+---------
+Create a comprehensive, user-friendly tool for downloading Crunchbase static export data and performing local queries using DuckDB. The system should provide a centralized CLI interface (RUN.sh) for all operations, maintaining clean code organization and comprehensive documentation.
+
+EXISTING CODE OBJECTIVES
+------------------------
+
+1. Data Download System (cb_downloader/)
+   - Download Crunchbase static export collections using API key
+   - Support downloading individual collections or all collections
+   - Track downloaded files with manifest.json
+   - Check for updates using Last-Modified headers
+   - Verify file integrity
+   - Handle corrupted files automatically
+   - Concurrent downloads for efficiency
+
+2. Database Import System (localduck/)
+   - Import downloaded ZIP files into DuckDB database
+   - Extract CSV files from ZIP archives
+   - Automatic schema inference
+   - Date-stamped database files
+   - Track extraction history with content hashes
+
+3. Query Systems
+   - Single company query by URL (query_funding_by_url.py)
+   - Bulk query multiple companies from CSV (bulk_funding_query.py)
+   - Quarterly funding breakdown
+   - Investor details
+   - Funding rounds with valuations
+
+4. Setup Automation
+   - Automated dependency installation (UV or pip)
+   - Interactive setup with options for:
+     * Fresh data download
+     * Using existing data
+     * Downloading missing collections
+     * Fixing corrupted files
+   - Environment configuration
+
+PROJECT RESTRUCTURE REQUIREMENTS
+---------------------------------
+
+1. Directory Structure
+   - DIR/          : Temporary or intermediate directories
+   - DOCS/         : All documentation files
+   - SRC/          : All source code
+   - SPEC/         : Specifications and requirements
+   - INPUT/        : Input files (CSV files for bulk queries)
+   - OUTPUT/       : Output files (query results, reports)
+
+2. RUN.sh CLI
+   - Centralized command interface
+   - Commands:
+     * setup       : Complete setup workflow
+     * download    : Download collections
+     * import      : Import to DuckDB
+     * query       : Query single company
+     * bulk        : Bulk query from CSV
+     * list        : List available collections
+     * check       : Check download status
+     * verify      : Verify file integrity
+     * help        : Show help
+
+3. Documentation
+   - README.md must only describe RUN.sh usage
+   - Link to DOCS/ for detailed documentation
+   - Create individual doc files in DOCS/ for:
+     * Installation
+     * Usage
+     * Configuration
+     * API Reference
+     * Examples
+
+KEY FEATURES
+------------
+
+- One-click setup with ./RUN.sh setup
+- Flexible data management (use existing or download fresh)
+- Fast local queries without API limits
+- Bulk processing capabilities
+- Quarterly funding breakdown
+- Comprehensive investor details
+- File integrity verification
+- Date-stamped databases
+- Automatic schema inference
+
+TECHNICAL STACK
+---------------
+
+- Python 3.8+
+- DuckDB for local SQL queries
+- Typer for CLI framework
+- Rich for terminal formatting
+- Httpx for async HTTP requests
+- UV (recommended) or pip for dependency management
+
+DATA SOURCE
+-----------
+
+Crunchbase Static Exports API
+- Available collections: organizations, funding_rounds, investments, acquisitions, etc.
+- Requires API key from https://data.crunchbase.com
+- ZIP files containing CSV data
+- Last-Modified headers for change detection
+
+USER REQUIREMENTS
+-----------------
+
+This prompt requests:
+1. Create DIR, DOCS, SRC, SPEC, INPUT, OUTPUT directories
+2. Create RUN.sh as main CLI entry point
+3. Move all code to SRC subdirectory
+4. Update README.md to only about RUN.sh with links to DOCS
+5. Create SPEC.txt in SPEC directory with objectives of existing code plus this prompt
+
+FUTURE ENHANCEMENTS
+-------------------
+
+Potential additions:
+- Web interface
+- GraphQL API
+- Advanced analytics
+- Export to multiple formats
+- Scheduled updates
+- Multi-database support
+- Custom query builder
+

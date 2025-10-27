@@ -1,304 +1,250 @@
 # SimpleCBLookup
 
-A simple tool for downloading Crunchbase static exports and loading them into DuckDB for local querying.
-
-**Quick Start:** Just run `./setup.sh` - it handles everything automatically!
-
-> **Note:** If you already have data downloaded, the setup script will detect it and ask if you want to use existing data or download fresh updates.
-
-## Features
-
-- Download Crunchbase static export collections using your API key
-- Import downloaded data into DuckDB for fast local querying
-- Query funding data by company URL (single or bulk)
-- Bulk query multiple companies with quarterly funding breakdown
-- Check which collections are available with your API key
-- Track updates with Last-Modified timestamps
+A simple, powerful tool for downloading Crunchbase static export data and performing fast local queries using DuckDB.
 
 ## Installation
 
-### Prerequisites
-
-- Python 3.8+
-- A Crunchbase API key
-- UV (recommended, installed automatically by setup.sh) or pip
-
-### Install Dependencies
-
-**Using UV (recommended, faster):**
-```bash
-uv pip install httpx typer rich duckdb python-dateutil
-```
-
-**Using pip:**
-```bash
-pip install httpx typer rich duckdb python-dateutil
-```
-
-## Getting Started
-
-### One-Click Setup (Easiest)
-
-Run the automated setup script with UV ([uv](https://github.com/astral-sh/uv) is a fast Python package installer that's 10-100x faster than pip):
+**Install from GitHub:**
 
 ```bash
-./setup.sh
+# Clone the repository
+git clone https://github.com/sebk4c/SimpleCBLookup.git
+
+# Navigate to the project directory
+cd SimpleCBLookup
+
+# Make RUN.sh executable
+chmod +x RUN.sh
 ```
 
-Or copy-paste this true one-liner:
+**That's it! You're ready to go.**
+
+## Quick Start
+
+**Just run `./RUN.sh` - it shows an interactive menu!**
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh && ./setup.sh
+# Interactive menu (recommended)
+./RUN.sh
+
+# Or use command-line mode
+./RUN.sh setup
+./RUN.sh unzip
+./RUN.sh query tesla.com
+./RUN.sh bulk INPUT/companies.csv
 ```
 
-> **Note:** UV will be automatically installed if you don't have it. It's a modern Python tool that's much faster than pip and manages dependencies better.
+## What is RUN.sh?
 
-This will:
-1. Install UV (if not already installed)
-2. Install all Python dependencies
-3. Check for existing data (if found, you can use it or download fresh)
-4. Prompt for your Crunchbase API key
-5. Check available collections (or skip if using existing data)
-6. Download data (you can choose all or essential collections)
-7. Import into DuckDB (or skip if database already exists)
-8. Test with Tesla.com
+`RUN.sh` is the **centralized interactive menu system** for all SimpleCBLookup operations. It provides:
 
-### Re-running Setup
+### Interactive Menu (Default)
+Just run `./RUN.sh` to see a numbered menu:
 
-If you run `./setup.sh` again and already have data:
+**Setup & Data Management:**
+- **1) Setup** - Complete installation and data download (includes automatic unzip)
+- **2) Download Collections** - Download Crunchbase collections
+- **3) Unzip All Files** - Extract CSV files from zips
+- **4) Import to DuckDB** - Import data into database
 
-- **Download step**: You'll be asked if you want to use existing zips or download fresh data
-- **Import step**: You'll be asked if you want to re-import or use the existing database
+**Query & Analysis:**
+- **5) Query Company** - Query single company by URL
+- **6) Bulk Query** - Process CSV with URLs (single row)
+- **d) DuckDB UI** - Launch DuckDB web UI (browser-based)
 
-This allows you to easily:
-- Update your data with fresh downloads
-- Recreate your database if needed
-- Skip unnecessary steps when you just want to test queries
+**Information & Verification:**
+- **7) List Collections** - List available collections
+- **8) Check Downloaded** - Check download status
+- **9) Verify Files** - Verify file integrity
 
-### Python Setup (Manual Install)
+**Other:**
+- **a) Help** - Show help and documentation
+- **0) Exit** - Quit program
 
-If you prefer to manage dependencies yourself:
+### Command-Line Mode
+Add arguments for automation:
+- `./RUN.sh setup` - Run setup
+- `./RUN.sh query tesla.com` - Query a company
+- `./RUN.sh download --all` - Download all collections
+- `./RUN.sh INPUT/companies.csv` - **Auto-detect CSV and run bulk query**
+
+## Main Commands
+
+| Command | Description |
+|---------|-------------|
+| `./RUN.sh setup` | Complete setup workflow (includes automatic unzip) |
+| `./RUN.sh download` | Download Crunchbase collections |
+| `./RUN.sh unzip` | Unzip all files in DATA/zips/ |
+| `./RUN.sh import` | Import data to DuckDB |
+| `./RUN.sh query <url>` | Query single company |
+| `./RUN.sh bulk <csv>` | Bulk query from CSV (single row of URLs) |
+| `./RUN.sh list` | List available collections |
+| `./RUN.sh check` | Check download status |
+| `./RUN.sh verify` | Verify file integrity |
+| `./RUN.sh duckdb` | Launch DuckDB web UI |
+| `./RUN.sh help` | Show help message |
+
+## Examples
+
+### First-Time Setup
 
 ```bash
-pip install httpx typer rich duckdb
-python setup.py
+./RUN.sh setup
 ```
 
-### Manual Setup
+Follow the prompts to:
+1. Install dependencies
+2. Enter your API key
+3. Download DATA
+4. Automatically unzip files
+5. Import to DuckDB
+6. Test with a sample query
 
-If you prefer to do it step by step:
-
-#### 1. Set Your API Key
-
-Set your Crunchbase API key as an environment variable:
+### Query a Company
 
 ```bash
-export CRUNCHBASE_USER_KEY="your-api-key-here"
+./RUN.sh query tesla.com
+./RUN.sh query apple.com
+./RUN.sh query openai.com
 ```
 
-Alternatively, you can pass it via command-line arguments.
+### Bulk Query
 
-#### 2. Check Available Collections
+Your CSV file should have a **URL column** (can be named: URL, Website, Domain, Website_URL, Site, or Web):
 
-List all available collections and their metadata:
+```csv
+Company Name,Website,Industry
+Tesla Inc,tesla.com,Automotive
+Apple Inc,apple.com,Technology
+OpenAI,openai.com,AI
+```
+
+**Example Headers Supported:**
+```csv
+Company,Website,Market          ✅ Works
+Company_Name,URL,Industry       ✅ Works  
+Firm,Website_URL,Sector         ✅ Works
+Column_1,Column_2,Column_3      ⚠️ Needs a URL keyword
+,Website,                       ✅ Auto-names empty columns
+```
+
+**Features:**
+- ✅ Automatically finds the URL column
+- ✅ Works with any CSV structure
+- ✅ Processes all rows (one URL per row)
+- ✅ Adds funding data to each row
+- ✅ Handles empty/unheaded columns gracefully
+- ✅ Interactive prompt to filter quarterly data by year (optional)
+
+Run:
+```bash
+# Auto-detect CSV file
+./RUN.sh INPUT/companies.csv
+```
+
+**Interactive Year Filter:**
+After processing URLs, you'll be prompted to filter quarterly data:
+```
+============================================================
+Quarterly Data Export Settings
+============================================================
+Found quarters from 2000 Q1 to 2025 Q4
+
+Enter the oldest year to include in quarterly columns:
+  - Press Enter for ALL quarters (default)
+  - Or enter a year (e.g., 2010, 1990)
+
+Oldest year (default=all): 
+```
+
+**Examples:**
+- Press Enter → All quarters included (2010 Q1, 2011 Q1, ... 2025 Q4)
+- Enter `2010` → Only quarters from 2010 onwards
+- Enter `1990` → Only quarters from 1990 onwards
+
+Output: Enhanced CSV written to `OUTPUT/` folder with:
+- Original CSV structure preserved
+- Additional columns appended: Company Information, Investment Rounds, Total Funding
+- Quarterly funding breakdown columns (filtered by year if specified)
+
+### Unzip Downloaded Files
+
+After downloading collections, extract them before importing:
 
 ```bash
-python -m cb_downloader list
+./RUN.sh unzip
 ```
 
-This will show you:
-- Available collections
-- HTTP status codes
-- Last modified dates
-- File sizes
+This will unzip all files from `DATA/zips/` to `DATA/extracted_csvs/`.
 
-#### 3. Download Collections
-
-Download all available collections:
+### Check Status
 
 ```bash
-python -m cb_downloader download --all
+# List all available collections
+./RUN.sh list
+
+# Check what's downloaded
+./RUN.sh check
+
+# Verify file integrity
+./RUN.sh verify
 ```
 
-Or download a specific collection:
+## Documentation
 
-```bash
-python -m cb_downloader download organizations
-```
+For detailed information, see the **[DOCS](DOCS/)** directory:
 
-Available collections include:
-- `organizations` - Company information
-- `funding_rounds` - Funding round details
-- `acquisitions` - Acquisition data
-- `people` - Person profiles
-- `events` - Event information
-- And many more...
-
-#### Download Options
-
-```bash
-# Download to a custom directory
-python -m cb_downloader download --all --dest ./my-data
-
-# Force re-download even if unchanged
-python -m cb_downloader download --all --force
-
-# Set concurrency level for faster downloads
-python -m cb_downloader download --all --max-concurrency 8
-
-# Use a specific API key
-python -m cb_downloader download --all --user-key "your-key"
-```
-
-#### 4. Import into DuckDB
-
-After downloading, import the ZIP files into DuckDB:
-
-```bash
-python localduck/import_to_duckdb.py
-```
-
-This will:
-- Read the manifest.json to determine the data date
-- Extract CSV files from all ZIP archives in `data/zips/`
-- Save extracted CSVs to `data/extracted_csvs/` with timestamped filenames
-- Create tables in `data/cb_data.YYYY-MM-DD.duckdb` (e.g., `data/cb_data.2025-10-21.duckdb`)
-- Import all data with automatic schema inference
-- Show a summary of imported tables and row counts
-
-#### 5. Query the Data
-
-Query funding data for a company by URL:
-
-```bash
-python localduck/query_funding_by_url.py tesla.com
-```
-
-Or with full URL:
-
-```bash
-python localduck/query_funding_by_url.py https://www.tesla.com
-```
-
-This will display:
-- Company information
-- All funding rounds
-- Amount raised, valuations, stages
-- Summary statistics
-
-#### Bulk Query Multiple Companies
-
-Query funding data for multiple companies from a CSV file:
-
-```bash
-# Auto-generate output filename from input CSV name
-python bulk_funding_query.py urls.csv
-
-# Or specify custom output filename
-python bulk_funding_query.py urls.csv output.csv
-```
-
-Or query a single company and save to CSV (output filename auto-generated):
-
-```bash
-python bulk_funding_query.py tesla.com
-```
-
-**Output filename format:**
-- Single URL: `{url}_Funding_rounds_to_date_{YYYY-MM-DD}.csv`
-- CSV input: `{input_filename}_Funding_rounds_to_date_{YYYY-MM-DD}.csv`
-
-Example outputs:
-- `tesla.com` → `tesla.com_Funding_rounds_to_date_2025-01-23.csv`
-- `companies.csv` → `companies_Funding_rounds_to_date_2025-01-23.csv`
-
-The bulk query script outputs a CSV with:
-- Company information (name, description, categories, etc.)
-- Investment rounds and funding details
-- Total funding to date
-- Quarterly funding breakdown (2025 Q1, 2025 Q2, etc.)
-
-CSV format: Put URLs in the first column of your input CSV.
-
-## Data Structure
-
-Downloaded files are stored in `data/zips/` by default. Each ZIP contains CSV files that are imported into DuckDB tables.
-
-The manifest file (`data/manifest.json`) tracks:
-- Downloaded file paths
-- Last-Modified timestamps
-- Download dates
-- File sizes
-
-## Advanced Usage
-
-### Check for Updates
-
-Check if collections have been updated:
-
-```bash
-python -m cb_downloader updates
-```
-
-This updates `Updates.md` with the latest Last-Modified information for all collections.
-
-### Query DuckDB Directly
-
-Connect to the DuckDB database:
-
-```python
-import duckdb
-import glob
-
-# Find the latest database
-db_files = glob.glob("data/cb_data.*.duckdb")
-db_path = sorted(db_files)[-1] if db_files else None
-
-if db_path:
-    conn = duckdb.connect(db_path)
-    
-    # List all tables
-    print(conn.execute("SHOW TABLES").fetchall())
-    
-    # Query organizations
-    results = conn.execute("SELECT * FROM organizations LIMIT 10").fetchall()
-    print(results)
-    
-    conn.close()
-else:
-    print("No database found. Run the import script first.")
-```
+- **[Menu System](DOCS/MENU_SYSTEM.md)** - Interactive menu guide ← **START HERE**
+- **[Installation Guide](DOCS/INSTALLATION.md)** - Setup and dependencies
+- **[Usage Guide](DOCS/USAGE.md)** - How to use the tool
+- **[Examples](DOCS/EXAMPLES.md)** - Real-world examples
+- **[Configuration](DOCS/CONFIGURATION.md)** - Settings and options
+- **[API Reference](DOCS/API_REFERENCE.md)** - Technical details
 
 ## Project Structure
 
 ```
 SimpleCBLookup/
-├── cb_downloader/             # Download tool
-│   ├── cli.py                 # Command-line interface
-│   ├── collections.py         # Collection definitions
-│   └── __init__.py
-├── localduck/                 # DuckDB import and query tools
-│   ├── import_to_duckdb.py    # Import script
-│   └── query_funding_by_url.py # Query example
-├── bulk_funding_query.py      # Bulk query script
-├── data/                      # Downloaded data (created on first run, gitignored)
-│   ├── zips/                  # Downloaded ZIP files
-│   ├── extracted_csvs/        # Extracted CSV files with timestamps
-│   ├── cb_data.YYYY-MM-DD.duckdb  # DuckDB database with date
-│   └── manifest.json           # Download tracking
-├── setup.py                   # Setup script
-├── setup.sh                   # Automated setup script
-├── pyproject.toml             # UV dependencies
-└── README.md
+├── RUN.sh                 # Main CLI entry point ← START HERE
+├── DIR/                   # Temporary directories
+├── DOCS/                  # Documentation
+├── SRC/                   # Source code
+├── SPEC/                  # Specifications
+├── INPUT/                 # Input CSV files
+├── OUTPUT/                # Output files
+└── DATA/                  # Downloaded data (created on first run)
 ```
+
+## Features
+
+- ✅ **One-Click Setup** - Complete automation
+- ✅ **Fast Local Queries** - No API limits
+- ✅ **Bulk Processing** - Query hundreds of companies
+- ✅ **Quarterly Breakdown** - Time-series analysis
+- ✅ **File Verification** - Automatic integrity checks
+- ✅ **Flexible Data Management** - Use existing or download fresh
+- ✅ **Date-Stamped Databases** - Track data over time
 
 ## Requirements
 
-- `httpx` - Async HTTP client
-- `typer` - CLI framework
-- `rich` - Terminal formatting
-- `duckdb` - Local database
-- `python-dateutil` - Date utilities for bulk queries
+- Python 3.8+
+- Crunchbase API key ([get one here](https://data.crunchbase.com))
+- Internet connection (for initial setup)
+
+## Getting Help
+
+```bash
+# Show usage
+./RUN.sh help
+
+# Or
+./RUN.sh
+```
+
+For detailed documentation:
+- See files in [DOCS/](DOCS/)
+- Check [API Reference](DOCS/API_REFERENCE.md)
+- Review [Examples](DOCS/EXAMPLES.md)
 
 ## License
 
@@ -306,5 +252,4 @@ MIT
 
 ## Support
 
-For issues or questions about the Crunchbase API, visit: https://data.crunchbase.com/docs
-
+For issues with the Crunchbase API, visit: https://data.crunchbase.com/docs

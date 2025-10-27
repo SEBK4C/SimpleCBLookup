@@ -13,7 +13,7 @@ import json
 import hashlib
 from datetime import datetime
 
-def load_manifest(manifest_path: str = "data/manifest.json") -> dict:
+def load_manifest(manifest_path: str = "../DATA/manifest.json") -> dict:
     """Load the manifest.json file to get data dates."""
     with open(manifest_path, 'r') as f:
         return json.load(f)
@@ -22,14 +22,34 @@ def get_data_date(manifest: dict) -> str:
     """Extract the date from the manifest's last_modified field."""
     # Get the first entry's last_modified to determine the date
     first_entry = next(iter(manifest.values()))
-    last_modified = first_entry['last_modified']
-    # Parse the ISO datetime and extract just the date part
-    dt = datetime.fromisoformat(last_modified.replace('+00:00', ''))
-    return dt.strftime('%Y-%m-%d')
+    last_modified = first_entry.get('last_modified', '')
+    
+    # Handle cases where last_modified might be missing or 'unknown'
+    if not last_modified or last_modified.lower() == 'unknown':
+        print("Warning: No valid date in manifest, using current date")
+        return datetime.now().strftime('%Y-%m-%d')
+    
+    try:
+        # Parse the ISO datetime and extract just the date part
+        dt = datetime.fromisoformat(last_modified.replace('+00:00', ''))
+        return dt.strftime('%Y-%m-%d')
+    except (ValueError, AttributeError):
+        print(f"Warning: Could not parse date '{last_modified}', using current date")
+        return datetime.now().strftime('%Y-%m-%d')
 
 def get_zip_files(zip_dir: str) -> List[str]:
     """Get all zip files in the directory."""
     return sorted(glob.glob(os.path.join(zip_dir, "*.zip")))
+
+def get_extracted_csvs(extract_dir: str) -> dict:
+    """Get all already extracted CSV files, mapped by base name."""
+    csv_map = {}
+    for csv_file in glob.glob(os.path.join(extract_dir, "*.csv")):
+        basename = os.path.basename(csv_file)
+        # Extract the table name from filename (before first dot)
+        table_name = basename.split('.')[0]
+        csv_map[table_name] = csv_file
+    return csv_map
 
 def extract_csv_from_zip(zip_path: str, extract_dir: str, date_str: str) -> str:
     """Extract CSV from zip file, rename with date, and return the CSV path."""
@@ -87,11 +107,11 @@ def main():
     
     print(f"Data date from manifest: {date_str}")
     
-    # Configuration - use data folder structure
-    zip_dir = "data/zips"
-    extract_dir = "data/extracted_csvs"
+    # Configuration - use DATA folder structure (one level up from SRC)
+    zip_dir = "../DATA/zips"
+    extract_dir = "../DATA/extracted_csvs"
     db_filename = f"cb_data.{date_str}.duckdb"
-    db_path = os.path.join("data", db_filename)
+    db_path = os.path.join("../DATA", db_filename)
     
     print(f"Using zip directory: {zip_dir}")
     print(f"Extracting CSVs to: {extract_dir}")
@@ -100,24 +120,40 @@ def main():
     # Create extraction directory
     os.makedirs(extract_dir, exist_ok=True)
     
-    # Get all zip files
-    zip_files = get_zip_files(zip_dir)
-    print(f"Found {len(zip_files)} zip files to process\n")
+    # Check if CSV files are already extracted
+    extracted_csvs = get_extracted_csvs(extract_dir)
     
-    # Process each zip file
-    for zip_path in zip_files:
-        zip_filename = os.path.basename(zip_path)
-        table_name = os.path.splitext(zip_filename)[0]  # Remove .zip extension
+    if extracted_csvs:
+        print(f"Found {len(extracted_csvs)} pre-extracted CSV files")
+        print("Using pre-extracted CSVs instead of zips\n")
         
-        try:
-            # Extract CSV with date and hash in filename
-            csv_path = extract_csv_from_zip(zip_path, extract_dir, date_str)
+        # Process each extracted CSV
+        for table_name, csv_path in sorted(extracted_csvs.items()):
+            try:
+                # Import to DuckDB
+                import_csv_to_duckdb(csv_path, table_name, db_path)
+            except Exception as e:
+                print(f"  ✗ Error processing {table_name}: {e}")
+    else:
+        # Get all zip files
+        zip_files = get_zip_files(zip_dir)
+        print(f"Found {len(zip_files)} zip files to process")
+        print("No pre-extracted CSVs found, extracting from zips...\n")
+        
+        # Process each zip file
+        for zip_path in zip_files:
+            zip_filename = os.path.basename(zip_path)
+            table_name = os.path.splitext(zip_filename)[0]  # Remove .zip extension
             
-            # Import to DuckDB
-            import_csv_to_duckdb(csv_path, table_name, db_path)
-            
-        except Exception as e:
-            print(f"  ✗ Error processing {zip_filename}: {e}")
+            try:
+                # Extract CSV with date and hash in filename
+                csv_path = extract_csv_from_zip(zip_path, extract_dir, date_str)
+                
+                # Import to DuckDB
+                import_csv_to_duckdb(csv_path, table_name, db_path)
+                
+            except Exception as e:
+                print(f"  ✗ Error processing {zip_filename}: {e}")
     
     print(f"\n✓ Import complete! Database saved to: {db_path}")
     
