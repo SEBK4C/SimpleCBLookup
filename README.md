@@ -41,7 +41,6 @@ Follow the prompts to:
 ./RUN.sh query apple.com
 ./RUN.sh query openai.com
 ```
-
 ### Bulk Query
 
 Your CSV file should have a **URL column** (can be named: URL, Website, Domain, Website_URL, Site, or Web):
@@ -101,28 +100,80 @@ Output: Enhanced CSV written to `OUTPUT/` folder with:
 - Additional columns appended: Company Information, Investment Rounds, Total Funding
 - Quarterly funding breakdown columns (filtered by year if specified)
 
-### Unzip Downloaded Files
 
-After downloading collections, extract them before importing:
+### DuckDB Web UI
 
-```bash
-./RUN.sh unzip
-```
-
-This will unzip all files from `DATA/zips/` to `DATA/extracted_csvs/`.
-
-### Check Status
+Launch an interactive DuckDB web interface to explore your data:
 
 ```bash
-# List all available collections
-./RUN.sh list
-
-# Check what's downloaded
-./RUN.sh check
-
-# Verify file integrity
-./RUN.sh verify
+./RUN.sh duckdb
 ```
+
+**Example SQL Queries:**
+
+**Find startups by category:**
+```sql
+SELECT 
+    "identifier.value" as company_name,
+    website,
+    "categories.value" as category,
+    "funding_total.value_usd" as total_funding,
+    num_funding_rounds,
+    "founded_on.value" as founded_date
+FROM organizations
+WHERE "categories.value" LIKE '%Artificial Intelligence%'
+ORDER BY "funding_total.value_usd" DESC NULLS LAST
+LIMIT 50;
+```
+
+**Get investor portfolios:**
+```sql
+SELECT 
+    i."investor_identifier.value" as investor_name,
+    o."identifier.value" as company_name,
+    o.website,
+    fr."money_raised.value_usd" as round_amount,
+    fr.investment_stage,
+    fr.announced_on,
+    i.is_lead_investor
+FROM investments i
+JOIN funding_rounds fr ON i."funding_round_identifier.uuid" = fr."identifier.uuid"
+JOIN organizations o ON fr."funded_organization_identifier.uuid" = o."identifier.uuid"
+WHERE i."investor_identifier.value" LIKE '%Andreessen%'
+ORDER BY fr.announced_on DESC;
+```
+
+**Top investors by number of investments:**
+```sql
+SELECT 
+    "investor_identifier.value" as investor_name,
+    COUNT(*) as total_investments,
+    SUM("money_invested.value_usd") as total_invested_usd
+FROM investments
+WHERE "investor_identifier.value" IS NOT NULL
+GROUP BY "investor_identifier.value"
+ORDER BY total_investments DESC
+LIMIT 20;
+```
+
+**Recent funding rounds with valuations:**
+```sql
+SELECT 
+    o."identifier.value" as company_name,
+    o.website,
+    fr."money_raised.value_usd" as amount_raised,
+    fr."post_money_valuation.value_usd" as post_money_valuation,
+    fr."pre_money_valuation.value_usd" as pre_money_valuation,
+    fr.investment_stage,
+    fr.announced_on
+FROM funding_rounds fr
+JOIN organizations o ON fr."funded_organization_identifier.uuid" = o."identifier.uuid"
+WHERE fr.announced_on >= '2024-01-01'
+ORDER BY fr.announced_on DESC
+LIMIT 100;
+```
+
+
 
 ## Documentation
 
