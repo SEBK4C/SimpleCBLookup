@@ -405,16 +405,30 @@ cmd_bulk() {
     # Determine the input file path - convert to absolute path for clarity
     input_file=""
     
+    # Helper function to get absolute path (works on both macOS and Linux)
+    get_abs_path() {
+        if command -v realpath &> /dev/null && realpath "$1" &> /dev/null; then
+            realpath "$1"
+        else
+            # Fallback for systems without realpath
+            if [[ "$1" == /* ]]; then
+                echo "$1"
+            else
+                echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
+            fi
+        fi
+    }
+    
     # Try to find the file in various locations
     if [ -f "$1" ]; then
         # File exists as specified - convert to absolute path
-        input_file=$(realpath "$1")
+        input_file=$(get_abs_path "$1")
     elif [ -f "$INPUT_DIR/$1" ]; then
         # File exists in INPUT directory
-        input_file=$(realpath "$INPUT_DIR/$1")
+        input_file=$(get_abs_path "$INPUT_DIR/$1")
     elif [ -f "$INPUT_DIR/$(basename "$1")" ]; then
         # Try with just the basename in INPUT directory
-        input_file=$(realpath "$INPUT_DIR/$(basename "$1")")
+        input_file=$(get_abs_path "$INPUT_DIR/$(basename "$1")")
     fi
     
     if [ -z "$input_file" ] || [ ! -f "$input_file" ]; then
@@ -432,8 +446,16 @@ cmd_bulk() {
     
     cd "$SRC_DIR"
     
-    # Calculate relative path from SRC to the input file
-    input_rel=$(realpath --relative-to="$PWD" "$input_file")
+    # Calculate relative path from SRC to the input file using Python
+    # This works on both macOS and Linux
+    input_rel=$(python3 -c "
+import os
+import sys
+src_dir = os.getcwd()
+input_file = '$input_file'
+rel_path = os.path.relpath(input_file, src_dir)
+print(rel_path)
+")
     
     # Use venv python directly
     if [ -n "$2" ]; then
