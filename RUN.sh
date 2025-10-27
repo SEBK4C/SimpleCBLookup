@@ -371,6 +371,21 @@ cmd_query() {
     cd ..
 }
 
+# List CSV files in INPUT directory
+list_csv_files() {
+    local csv_files=()
+    local index=1
+    
+    # Find all CSV files in INPUT directory
+    while IFS= read -r -d '' file; do
+        csv_files+=("$file")
+        echo "  $index) $(basename "$file")"
+        index=$((index + 1))
+    done < <(find "$INPUT_DIR" -maxdepth 1 -name "*.csv" -type f -print0 2>/dev/null | sort -z)
+    
+    echo "${csv_files[@]}"
+}
+
 # Bulk query command
 cmd_bulk() {
     if [ -z "$1" ]; then
@@ -387,32 +402,47 @@ cmd_bulk() {
     # Create INPUT and OUTPUT directories if they don't exist
     mkdir -p "$INPUT_DIR" "$OUTPUT_DIR"
     
-    # Check if file exists in INPUT directory or current directory
-    if [ ! -f "$1" ] && [ ! -f "$INPUT_DIR/$1" ]; then
+    # Determine the input file path - convert to absolute path for clarity
+    input_file=""
+    
+    # Try to find the file in various locations
+    if [ -f "$1" ]; then
+        # File exists as specified - convert to absolute path
+        input_file=$(realpath "$1")
+    elif [ -f "$INPUT_DIR/$1" ]; then
+        # File exists in INPUT directory
+        input_file=$(realpath "$INPUT_DIR/$1")
+    elif [ -f "$INPUT_DIR/$(basename "$1")" ]; then
+        # Try with just the basename in INPUT directory
+        input_file=$(realpath "$INPUT_DIR/$(basename "$1")")
+    fi
+    
+    if [ -z "$input_file" ] || [ ! -f "$input_file" ]; then
         echo -e "${RED}Error: File not found: $1${NC}"
         echo "Please ensure the file exists in INPUT/ or provide full path"
         exit 1
     fi
     
-    # Use the file path directly or prepend INPUT_DIR
-    if [ -f "$1" ]; then
-        input_file="$1"
-    else
-        input_file="$INPUT_DIR/$1"
-    fi
-    
     echo -e "${GREEN}Bulk querying from: $input_file${NC}"
     echo -e "${YELLOW}Note: CSV must contain URLs in a SINGLE column only!${NC}"
+    
+    # Convert absolute path to relative path from SRC directory
+    # Store current directory
+    project_root="$PWD"
+    
     cd "$SRC_DIR"
+    
+    # Calculate relative path from SRC to the input file
+    input_rel=$(realpath --relative-to="$PWD" "$input_file")
     
     # Use venv python directly
     if [ -n "$2" ]; then
-        ../.venv/bin/python3 bulk_funding_query.py "$input_file" "$2"
+        ../.venv/bin/python3 bulk_funding_query.py "$input_rel" "$2"
     else
-        ../.venv/bin/python3 bulk_funding_query.py "$input_file"
+        ../.venv/bin/python3 bulk_funding_query.py "$input_rel"
     fi
     
-    cd ..
+    cd "$project_root"
 }
 
 # List command
@@ -565,8 +595,35 @@ show_menu() {
             ask_return_to_menu
             ;;
         6)
-            read -p "Enter CSV file path: " csv_file
-            cmd_bulk "$csv_file"
+            # List CSV files in INPUT directory
+            echo -e "${CYAN}Available CSV files in INPUT/:${NC}"
+            csv_files_array=()
+            index=1
+            
+            while IFS= read -r -d '' file; do
+                csv_files_array+=("$file")
+                echo "  $index) $(basename "$file")"
+                index=$((index + 1))
+            done < <(find "$INPUT_DIR" -maxdepth 1 -name "*.csv" -type f -print0 2>/dev/null | sort -z)
+            
+            if [ ${#csv_files_array[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No CSV files found in INPUT/ directory${NC}"
+                echo ""
+                read -p "Enter CSV file path: " csv_file
+                cmd_bulk "$csv_file"
+            else
+                echo ""
+                read -p "Select CSV file [1-${#csv_files_array[@]}] or enter custom path: " selection
+                
+                # Check if selection is a number
+                if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#csv_files_array[@]} ]; then
+                    csv_file="${csv_files_array[$((selection - 1))]}"
+                    cmd_bulk "$csv_file"
+                else
+                    # Custom path entered
+                    cmd_bulk "$selection"
+                fi
+            fi
             ask_return_to_menu
             ;;
         7)

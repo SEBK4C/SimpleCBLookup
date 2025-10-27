@@ -590,12 +590,32 @@ def main():
     if len(sys.argv) >= 2:
         input_csv = sys.argv[1]
         
-        # Check if file exists in INPUT directory or current directory
-        if not os.path.exists(input_csv) and os.path.exists(f"../INPUT/{input_csv}"):
+        # Handle different path scenarios
+        # If absolute path, use as-is
+        if os.path.isabs(input_csv):
+            if not os.path.exists(input_csv):
+                print(f"❌ Input file not found: {input_csv}")
+                sys.exit(1)
+        # If relative path exists as-is, use it
+        elif os.path.exists(input_csv):
+            # Already have a valid path
+            pass
+        # Try INPUT directory relative to SRC
+        elif os.path.exists(f"../INPUT/{input_csv}"):
             input_csv = f"../INPUT/{input_csv}"
-        
-        if not os.path.exists(input_csv):
+        # Try just the filename in INPUT directory
+        elif os.path.exists(f"../INPUT/{os.path.basename(input_csv)}"):
+            input_csv = f"../INPUT/{os.path.basename(input_csv)}"
+        # Try current directory + filename
+        elif os.path.exists(os.path.basename(input_csv)):
+            input_csv = os.path.basename(input_csv)
+        else:
             print(f"❌ Input file not found: {input_csv}")
+            print("Tried:")
+            print(f"  - {input_csv}")
+            print(f"  - ../INPUT/{input_csv}")
+            print(f"  - ../INPUT/{os.path.basename(input_csv)}")
+            print(f"  - {os.path.basename(input_csv)}")
             sys.exit(1)
         
         # Determine output file
