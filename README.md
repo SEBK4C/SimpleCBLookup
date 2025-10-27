@@ -16,9 +16,6 @@ cd SimpleCBLookup
 # Make RUN.sh executable
 chmod +x RUN.sh
 ```
-
-**That's it! You're ready to go.**
-
 ## Quick Start
 
 **Just run `./RUN.sh` - it shows an interactive menu!**
@@ -26,71 +23,8 @@ chmod +x RUN.sh
 ```bash
 # Interactive menu (recommended)
 ./RUN.sh
-
-# Or use command-line mode
-./RUN.sh setup
-./RUN.sh unzip
-./RUN.sh query tesla.com
-./RUN.sh bulk INPUT/companies.csv
 ```
-
-## What is RUN.sh?
-
-`RUN.sh` is the **centralized interactive menu system** for all SimpleCBLookup operations. It provides:
-
-### Interactive Menu (Default)
-Just run `./RUN.sh` to see a numbered menu:
-
-**Setup & Data Management:**
-- **1) Setup** - Complete installation and data download (includes automatic unzip)
-- **2) Download Collections** - Download Crunchbase collections
-- **3) Unzip All Files** - Extract CSV files from zips
-- **4) Import to DuckDB** - Import data into database
-
-**Query & Analysis:**
-- **5) Query Company** - Query single company by URL
-- **6) Bulk Query** - Process CSV with URLs (single row)
-- **d) DuckDB UI** - Launch DuckDB web UI (browser-based)
-
-**Information & Verification:**
-- **7) List Collections** - List available collections
-- **8) Check Downloaded** - Check download status
-- **9) Verify Files** - Verify file integrity
-
-**Other:**
-- **a) Help** - Show help and documentation
-- **0) Exit** - Quit program
-
-### Command-Line Mode
-Add arguments for automation:
-- `./RUN.sh setup` - Run setup
-- `./RUN.sh query tesla.com` - Query a company
-- `./RUN.sh download --all` - Download all collections
-- `./RUN.sh INPUT/companies.csv` - **Auto-detect CSV and run bulk query**
-
-## Main Commands
-
-| Command | Description |
-|---------|-------------|
-| `./RUN.sh setup` | Complete setup workflow (includes automatic unzip) |
-| `./RUN.sh download` | Download Crunchbase collections |
-| `./RUN.sh unzip` | Unzip all files in DATA/zips/ |
-| `./RUN.sh import` | Import data to DuckDB |
-| `./RUN.sh query <url>` | Query single company |
-| `./RUN.sh bulk <csv>` | Bulk query from CSV (single row of URLs) |
-| `./RUN.sh list` | List available collections |
-| `./RUN.sh check` | Check download status |
-| `./RUN.sh verify` | Verify file integrity |
-| `./RUN.sh duckdb` | Launch DuckDB web UI |
-| `./RUN.sh help` | Show help message |
-
-## Examples
-
 ### First-Time Setup
-
-```bash
-./RUN.sh setup
-```
 
 Follow the prompts to:
 1. Install dependencies
@@ -200,6 +134,56 @@ For detailed information, see the **[DOCS](DOCS/)** directory:
 - **[Examples](DOCS/EXAMPLES.md)** - Real-world examples
 - **[Configuration](DOCS/CONFIGURATION.md)** - Settings and options
 - **[API Reference](DOCS/API_REFERENCE.md)** - Technical details
+
+## What is RUN.sh?
+
+`RUN.sh` is the **centralized interactive menu system** for all SimpleCBLookup operations. It provides:
+
+### Interactive Menu (Default)
+Just run `./RUN.sh` to see a numbered menu:
+
+**Setup & Data Management:**
+- **1) Setup** - Complete installation and data download (includes automatic unzip)
+- **2) Download Collections** - Download Crunchbase collections
+- **3) Unzip All Files** - Extract CSV files from zips
+- **4) Import to DuckDB** - Import data into database
+
+**Query & Analysis:**
+- **5) Query Company** - Query single company by URL
+- **6) Bulk Query** - Process CSV with URLs (single row)
+- **d) DuckDB UI** - Launch DuckDB web UI (browser-based)
+
+**Information & Verification:**
+- **7) List Collections** - List available collections
+- **8) Check Downloaded** - Check download status
+- **9) Verify Files** - Verify file integrity
+
+**Other:**
+- **a) Help** - Show help and documentation
+- **0) Exit** - Quit program
+
+### Command-Line Mode
+Add arguments for automation:
+- `./RUN.sh setup` - Run setup
+- `./RUN.sh query tesla.com` - Query a company
+- `./RUN.sh download --all` - Download all collections
+- `./RUN.sh INPUT/companies.csv` - **Auto-detect CSV and run bulk query**
+
+## Main Commands
+
+| Command | Description |
+|---------|-------------|
+| `./RUN.sh setup` | Complete setup workflow (includes automatic unzip) |
+| `./RUN.sh download` | Download Crunchbase collections |
+| `./RUN.sh unzip` | Unzip all files in DATA/zips/ |
+| `./RUN.sh import` | Import data to DuckDB |
+| `./RUN.sh query <url>` | Query single company |
+| `./RUN.sh bulk <csv>` | Bulk query from CSV (single row of URLs) |
+| `./RUN.sh list` | List available collections |
+| `./RUN.sh check` | Check download status |
+| `./RUN.sh verify` | Verify file integrity |
+| `./RUN.sh duckdb` | Launch DuckDB web UI |
+| `./RUN.sh help` | Show help message |
 
 ## Project Structure
 
